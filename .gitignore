@@ -40,8 +40,9 @@ application-local.properties
 application-prod.properties
 application-secret.properties
 *.env
+.env.example
 .env
-
+.env.example
 # -- Logs ---------------------------------------------------------------------
 *.log
 logs/
@@ -56,3 +57,4 @@ logs/
 *.zip
 *.tar.gz
 *.rar
+
