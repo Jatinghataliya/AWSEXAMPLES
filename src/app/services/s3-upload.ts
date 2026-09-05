@@ -13,7 +13,9 @@ export interface UploadProgress {
 @Injectable({ providedIn: 'root' })
 export class S3UploadService {
 
-  private readonly API_BASE = 'http://localhost:8080/api/s3';
+  // In Docker: nginx proxies /api/ → backend container.
+  // In local dev: Spring Boot runs on localhost:8080.
+  private readonly API_BASE = '/api/s3';
 
   constructor(private http: HttpClient) {}
 
