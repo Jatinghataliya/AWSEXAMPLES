@@ -18,7 +18,11 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                        .allowedOrigins("http://localhost:4200")
+                        .allowedOrigins(
+                                "http://localhost:4200",  // Angular dev server
+                                "http://localhost:80",    // Docker nginx
+                                "http://localhost"        // Docker nginx (no port)
+                        )
                         .allowedMethods("GET", "POST", "DELETE", "OPTIONS")
                         .allowedHeaders("*");
             }
