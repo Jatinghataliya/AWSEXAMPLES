@@ -1,0 +1,276 @@
+// ── Variables ────────────────────────────────────────────────────────────────
+$bg:           #f4f6f9;
+$surface:      #ffffff;
+$border:       #dde1e7;
+$text:         #1a1a2e;
+$muted:        #6b7280;
+$accent:       #2563eb;
+$accent-light: #eff6ff;
+$success:      #16a34a;
+$success-bg:   #f0fdf4;
+$error:        #dc2626;
+$error-bg:     #fef2f2;
+$warning:      #d97706;
+$warning-bg:   #fffbeb;
+$radius:       10px;
+$shadow:       0 1px 4px rgba(0,0,0,0.08);
+
+// ── Page layout ───────────────────────────────────────────────────────────────
+.upload-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  color: $text;
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.upload-header {
+  margin-bottom: 2rem;
+  text-align: center;
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 0.4rem;
+  }
+
+  .subtitle {
+    color: $muted;
+    font-size: 0.9rem;
+    margin: 0;
+  }
+}
+
+// ── Drop Zone ─────────────────────────────────────────────────────────────────
+.drop-zone {
+  border: 2px dashed $border;
+  border-radius: $radius;
+  background: $surface;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  user-select: none;
+
+  &:hover,
+  &:focus {
+    border-color: $accent;
+    background: $accent-light;
+    outline: none;
+  }
+
+  &.drag-over {
+    border-color: $accent;
+    background: $accent-light;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+  }
+
+  &__icon {
+    font-size: 3rem;
+    color: $accent;
+    line-height: 1;
+    margin-bottom: 0.75rem;
+  }
+
+  &__primary {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 0.3rem;
+  }
+
+  &__secondary {
+    color: $muted;
+    margin: 0 0 1rem;
+
+    .link {
+      color: $accent;
+      text-decoration: underline;
+    }
+  }
+
+  &__hint {
+    font-size: 0.78rem;
+    color: $muted;
+    margin: 0;
+    line-height: 1.5;
+  }
+}
+
+// ── Upload List ───────────────────────────────────────────────────────────────
+.upload-list {
+  margin-top: 1.75rem;
+
+  &__toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+
+  &__count {
+    font-size: 0.85rem;
+    color: $muted;
+    font-weight: 500;
+  }
+}
+
+// ── Upload Card ───────────────────────────────────────────────────────────────
+.upload-card {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  box-shadow: $shadow;
+
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  &__name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__size {
+    font-size: 0.78rem;
+    color: $muted;
+  }
+
+  &__result {
+    margin-top: 0.6rem;
+    font-size: 0.82rem;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    word-break: break-all;
+
+    a {
+      color: $accent;
+      word-break: break-all;
+    }
+
+    &--success {
+      background: $success-bg;
+      color: $success;
+    }
+
+    &--error {
+      background: $error-bg;
+      color: $error;
+    }
+  }
+}
+
+// ── Progress Bar ──────────────────────────────────────────────────────────────
+.progress-bar {
+  margin-top: 0.6rem;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 99px;
+  overflow: hidden;
+
+  &__fill {
+    height: 100%;
+    background: $accent;
+    border-radius: 99px;
+    transition: width 0.2s ease;
+  }
+}
+
+// ── Badge ─────────────────────────────────────────────────────────────────────
+.badge {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 99px;
+  white-space: nowrap;
+
+  &--validating { background: #fef9c3; color: $warning; }
+  &--uploading  { background: $accent-light; color: $accent; }
+  &--done       { background: $success-bg; color: $success; }
+  &--error      { background: $error-bg; color: $error; }
+  &--blocked    { background: $error-bg; color: $error; }
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+.btn {
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &--ghost {
+    background: transparent;
+    color: $muted;
+    border: 1px solid $border;
+
+    &:hover { background: #f3f4f6; }
+  }
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: $muted;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+
+  &:hover { background: #f3f4f6; color: $error; }
+}
+
+// ── Security Panel ────────────────────────────────────────────────────────────
+.security-panel {
+  margin-top: 2rem;
+  border: 1px solid $border;
+  border-radius: $radius;
+  background: $surface;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.84rem;
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: $muted;
+    list-style: none;
+
+    &::-webkit-details-marker { display: none; }
+    &::before { content: '▶ '; font-size: 0.7rem; }
+  }
+
+  &[open] summary::before { content: '▼ '; }
+
+  ul {
+    margin: 0.75rem 0 0;
+    padding-left: 1.25rem;
+    color: $muted;
+    line-height: 1.8;
+  }
+
+  code {
+    background: #f3f4f6;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.82rem;
+  }
+}

@@ -1,0 +1,114 @@
+<section class="upload-page">
+
+  <header class="upload-header">
+    <h1>AWS S3 File Upload</h1>
+    <p class="subtitle">Files are scanned for threats before uploading. Max size: 5 GB.</p>
+  </header>
+
+  <!-- ── Drop Zone ──────────────────────────────────────────────────────────── -->
+  <div
+    class="drop-zone"
+    [class.drag-over]="isDragOver"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave()"
+    (drop)="onDrop($event)"
+    (click)="fileInput.click()"
+    role="button"
+    aria-label="Click or drag files to upload"
+    tabindex="0"
+    (keydown.enter)="fileInput.click()"
+  >
+    <input
+      #fileInput
+      type="file"
+      multiple
+      hidden
+      (change)="onFileSelected($event)"
+    />
+    <div class="drop-zone__icon">&#8679;</div>
+    <p class="drop-zone__primary">Drag &amp; drop files here</p>
+    <p class="drop-zone__secondary">or <span class="link">browse</span> to choose files</p>
+    <p class="drop-zone__hint">
+      Allowed: PDF, images, video, audio, documents, archives &nbsp;|&nbsp;
+      Blocked: .exe, .bat, .sh, macros, and other executables
+    </p>
+  </div>
+
+  <!-- ── Upload List ────────────────────────────────────────────────────────── -->
+  @if (hasUploads) {
+    <div class="upload-list">
+
+      <div class="upload-list__toolbar">
+        <span class="upload-list__count">{{ uploads.length }} file(s)</span>
+        <button class="btn btn--ghost" (click)="clearAll()">Clear all</button>
+      </div>
+
+      @for (item of uploads; track item.s3Key; let i = $index) {
+        <div class="upload-card">
+
+          <!-- File info row -->
+          <div class="upload-card__info">
+            <div class="upload-card__meta">
+              <span class="upload-card__name" [title]="item.file.name">{{ item.file.name }}</span>
+              <span class="upload-card__size">{{ formatSize(item.file.size) }}</span>
+            </div>
+
+            <!-- Status badge -->
+            <span class="badge" [ngClass]="{
+              'badge--validating' : item.status === 'validating',
+              'badge--uploading'  : item.status === 'uploading',
+              'badge--done'       : item.status === 'done',
+              'badge--error'      : item.status === 'error',
+              'badge--blocked'    : item.status === 'blocked'
+            }">
+              @if (item.status === 'validating') { <span>&#9203; Scanning…</span> }
+              @else if (item.status === 'uploading') { <span>&#8679; Uploading {{ item.progress }}%</span> }
+              @else if (item.status === 'done') { <span>&#10003; Done</span> }
+              @else if (item.status === 'error') { <span>&#10007; Error</span> }
+              @else if (item.status === 'blocked') { <span>&#128683; Blocked</span> }
+            </span>
+
+            <button class="btn-icon" (click)="removeItem(i)" title="Remove">&#10005;</button>
+          </div>
+
+          <!-- Progress bar (only while uploading) -->
+          @if (item.status === 'uploading') {
+            <div class="progress-bar">
+              <div class="progress-bar__fill" [style.width.%]="item.progress"></div>
+            </div>
+          }
+
+          <!-- Success link -->
+          @if (item.status === 'done' && item.url) {
+            <div class="upload-card__result upload-card__result--success">
+              <span>Uploaded to S3: </span>
+              <a [href]="item.url" target="_blank" rel="noopener">{{ item.url }}</a>
+            </div>
+          }
+
+          <!-- Error / blocked message -->
+          @if ((item.status === 'error' || item.status === 'blocked') && item.error) {
+            <div class="upload-card__result upload-card__result--error">
+              <span>{{ item.error }}</span>
+            </div>
+          }
+
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Security info panel ────────────────────────────────────────────────── -->
+  <details class="security-panel">
+    <summary>Security checks performed on every file</summary>
+    <ul>
+      <li><strong>Extension blocklist</strong> — .exe, .bat, .cmd, .sh, .ps1, .jar, .class, macro-enabled Office files, and more are rejected.</li>
+      <li><strong>MIME type allowlist</strong> — only known-safe MIME types (PDF, images, video, audio, plain documents) are accepted.</li>
+      <li><strong>Magic bytes scan</strong> — the first 8 bytes of every file are read to detect executables and scripts disguised with a safe extension.</li>
+      <li><strong>Double extension check</strong> — files like <code>invoice.pdf.exe</code> are rejected.</li>
+      <li><strong>Null-byte injection</strong> — filenames containing null characters are rejected.</li>
+      <li><strong>File size limit</strong> — empty files and files above 5 GB are rejected.</li>
+    </ul>
+  </details>
+
+</section>
