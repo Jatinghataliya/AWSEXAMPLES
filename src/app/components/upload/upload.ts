@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { NgClass } from '@angular/common';
 import { FileValidatorService } from '../../services/file-validator';
 import { S3UploadService, UploadProgress } from '../../services/s3-upload';
 
@@ -16,7 +15,7 @@ interface UploadItem {
 @Component({
   selector: 'app-upload',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [NgClass],
   templateUrl: './upload.html',
   styleUrl: './upload.scss',
 })

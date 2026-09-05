@@ -5,7 +5,7 @@
     <p class="subtitle">Files are scanned for threats before uploading. Max size: 5 GB.</p>
   </header>
 
-  <!-- ── Drop Zone ─────────────────────────────────────────────────────────── -->
+  <!-- ── Drop Zone ──────────────────────────────────────────────────────────── -->
   <div
     class="drop-zone"
     [class.drag-over]="isDragOver"
@@ -34,64 +34,71 @@
     </p>
   </div>
 
-  <!-- ── Upload List ───────────────────────────────────────────────────────── -->
-  <div class="upload-list" *ngIf="hasUploads">
+  <!-- ── Upload List ────────────────────────────────────────────────────────── -->
+  @if (hasUploads) {
+    <div class="upload-list">
 
-    <div class="upload-list__toolbar">
-      <span class="upload-list__count">{{ uploads.length }} file(s)</span>
-      <button class="btn btn--ghost" (click)="clearAll()">Clear all</button>
-    </div>
+      <div class="upload-list__toolbar">
+        <span class="upload-list__count">{{ uploads.length }} file(s)</span>
+        <button class="btn btn--ghost" (click)="clearAll()">Clear all</button>
+      </div>
 
-    <div class="upload-card" *ngFor="let item of uploads; let i = index">
+      @for (item of uploads; track item.s3Key; let i = $index) {
+        <div class="upload-card">
 
-      <!-- File info row -->
-      <div class="upload-card__info">
-        <div class="upload-card__meta">
-          <span class="upload-card__name" [title]="item.file.name">{{ item.file.name }}</span>
-          <span class="upload-card__size">{{ formatSize(item.file.size) }}</span>
+          <!-- File info row -->
+          <div class="upload-card__info">
+            <div class="upload-card__meta">
+              <span class="upload-card__name" [title]="item.file.name">{{ item.file.name }}</span>
+              <span class="upload-card__size">{{ formatSize(item.file.size) }}</span>
+            </div>
+
+            <!-- Status badge -->
+            <span class="badge" [ngClass]="{
+              'badge--validating' : item.status === 'validating',
+              'badge--uploading'  : item.status === 'uploading',
+              'badge--done'       : item.status === 'done',
+              'badge--error'      : item.status === 'error',
+              'badge--blocked'    : item.status === 'blocked'
+            }">
+              @if (item.status === 'validating') { <span>&#9203; Scanning…</span> }
+              @else if (item.status === 'uploading') { <span>&#8679; Uploading {{ item.progress }}%</span> }
+              @else if (item.status === 'done') { <span>&#10003; Done</span> }
+              @else if (item.status === 'error') { <span>&#10007; Error</span> }
+              @else if (item.status === 'blocked') { <span>&#128683; Blocked</span> }
+            </span>
+
+            <button class="btn-icon" (click)="removeItem(i)" title="Remove">&#10005;</button>
+          </div>
+
+          <!-- Progress bar (only while uploading) -->
+          @if (item.status === 'uploading') {
+            <div class="progress-bar">
+              <div class="progress-bar__fill" [style.width.%]="item.progress"></div>
+            </div>
+          }
+
+          <!-- Success link -->
+          @if (item.status === 'done' && item.url) {
+            <div class="upload-card__result upload-card__result--success">
+              <span>Uploaded to S3: </span>
+              <a [href]="item.url" target="_blank" rel="noopener">{{ item.url }}</a>
+            </div>
+          }
+
+          <!-- Error / blocked message -->
+          @if ((item.status === 'error' || item.status === 'blocked') && item.error) {
+            <div class="upload-card__result upload-card__result--error">
+              <span>{{ item.error }}</span>
+            </div>
+          }
+
         </div>
-
-        <!-- Status badge -->
-        <span class="badge" [ngClass]="{
-          'badge--validating' : item.status === 'validating',
-          'badge--uploading'  : item.status === 'uploading',
-          'badge--done'       : item.status === 'done',
-          'badge--error'      : item.status === 'error',
-          'badge--blocked'    : item.status === 'blocked'
-        }">
-          <ng-container [ngSwitch]="item.status">
-            <span *ngSwitchCase="'validating'">&#9203; Scanning…</span>
-            <span *ngSwitchCase="'uploading'">&#8679; Uploading {{ item.progress }}%</span>
-            <span *ngSwitchCase="'done'">&#10003; Done</span>
-            <span *ngSwitchCase="'error'">&#10007; Error</span>
-            <span *ngSwitchCase="'blocked'">&#128683; Blocked</span>
-          </ng-container>
-        </span>
-
-        <button class="btn-icon" (click)="removeItem(i)" title="Remove">&#10005;</button>
-      </div>
-
-      <!-- Progress bar (only while uploading) -->
-      <div class="progress-bar" *ngIf="item.status === 'uploading'">
-        <div class="progress-bar__fill" [style.width.%]="item.progress"></div>
-      </div>
-
-      <!-- Success link -->
-      <div class="upload-card__result upload-card__result--success" *ngIf="item.status === 'done' && item.url">
-        <span>Uploaded to S3:</span>
-        <a [href]="item.url" target="_blank" rel="noopener">{{ item.url }}</a>
-      </div>
-
-      <!-- Error / blocked message -->
-      <div class="upload-card__result upload-card__result--error"
-           *ngIf="(item.status === 'error' || item.status === 'blocked') && item.error">
-        <span>{{ item.error }}</span>
-      </div>
-
+      }
     </div>
-  </div>
+  }
 
-  <!-- ── Security info panel ──────────────────────────────────────────────── -->
+  <!-- ── Security info panel ────────────────────────────────────────────────── -->
   <details class="security-panel">
     <summary>Security checks performed on every file</summary>
     <ul>
