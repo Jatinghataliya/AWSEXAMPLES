@@ -47,6 +47,13 @@
             <version>${aws.sdk.version}</version>
         </dependency>
 
+        <!-- Springdoc OpenAPI (Swagger UI) -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
         <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

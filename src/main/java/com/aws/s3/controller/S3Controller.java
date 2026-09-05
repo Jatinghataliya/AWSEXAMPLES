@@ -2,6 +2,15 @@ package com.aws.s3.controller;
 
 import com.aws.s3.dto.CompleteUploadRequest;
 import com.aws.s3.service.S3Service;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -9,22 +18,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Map;
 
-/**
- * REST API for uploading files to AWS S3.
- *
- * ┌─────────────────────────────────────────────────────────────────────────────┐
- * │  Endpoint                          │ Purpose                               │
- * ├─────────────────────────────────────────────────────────────────────────────┤
- * │  POST /api/s3/upload/simple        │ Single-call upload  (< 100 MB)        │
- * │  POST /api/s3/upload/large         │ Server-side streaming multipart       │
- * │  POST /api/s3/multipart/initiate   │ Step 1 — get uploadId                 │
- * │  POST /api/s3/multipart/upload-part│ Step 2 — upload one chunk             │
- * │  POST /api/s3/multipart/complete   │ Step 3 — assemble parts               │
- * │  DELETE /api/s3/multipart/abort    │ Abort & clean up on failure           │
- * └─────────────────────────────────────────────────────────────────────────────┘
- */
 @RestController
 @RequestMapping("/api/s3")
+@Tag(name = "S3 Upload", description = "Endpoints for uploading files to AWS S3 using single and multipart strategies")
 public class S3Controller {
 
     private final S3Service s3Service;
@@ -35,23 +31,26 @@ public class S3Controller {
 
     // ── 1. Simple Upload ──────────────────────────────────────────────────────
 
-    /**
-     * POST /api/s3/upload/simple
-     *
-     * Upload a file in a single request (best for files < 100 MB).
-     *
-     * Form params:
-     *   file  — the file to upload
-     *   key   — (optional) destination S3 key; defaults to original filename
-     *
-     * Example:
-     *   curl -X POST http://localhost:8080/api/s3/upload/simple \
-     *        -F "file=@/path/to/file.pdf" \
-     *        -F "key=uploads/file.pdf"
-     */
-    @PostMapping("/upload/simple")
+    @Operation(
+        summary = "Simple file upload",
+        description = "Uploads a file to S3 in a single PUT request. Best for files **smaller than 100 MB**."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "File uploaded successfully",
+            content = @Content(mediaType = "application/json",
+                examples = @ExampleObject(value = """
+                    {
+                      "message": "File uploaded successfully",
+                      "key": "uploads/document.pdf",
+                      "url": "https://your-bucket.s3.amazonaws.com/uploads/document.pdf"
+                    }"""))),
+        @ApiResponse(responseCode = "500", description = "Upload failed", content = @Content)
+    })
+    @PostMapping(value = "/upload/simple", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> simpleUpload(
+            @Parameter(description = "File to upload", required = true)
             @RequestParam("file") MultipartFile file,
+            @Parameter(description = "Destination S3 key (e.g. uploads/file.pdf). Defaults to uploads/<filename>")
             @RequestParam(value = "key", required = false) String key) throws IOException {
 
         String s3Key = resolveKey(key, file.getOriginalFilename());
@@ -64,27 +63,32 @@ public class S3Controller {
         ));
     }
 
-    // ── 2. Server-Side Streaming Multipart Upload ─────────────────────────────
+    // ── 2. Large File Upload ──────────────────────────────────────────────────
 
-    /**
-     * POST /api/s3/upload/large
-     *
-     * Upload a large file in a single API call — the server handles
-     * splitting it into 10 MB parts and uploading via S3 Multipart API.
-     * Best for files > 100 MB sent directly from a client.
-     *
-     * Form params:
-     *   file  — the file to upload
-     *   key   — (optional) destination S3 key; defaults to original filename
-     *
-     * Example:
-     *   curl -X POST http://localhost:8080/api/s3/upload/large \
-     *        -F "file=@/path/to/large-file.zip" \
-     *        -F "key=uploads/large-file.zip"
-     */
-    @PostMapping("/upload/large")
+    @Operation(
+        summary = "Large file upload (server-side multipart)",
+        description = """
+            Uploads a large file to S3. The **server** automatically splits the file into 10 MB
+            parts and uploads using the S3 Multipart Upload API. Best for files **larger than 100 MB**.
+            No client-side chunking needed.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Large file uploaded successfully",
+            content = @Content(mediaType = "application/json",
+                examples = @ExampleObject(value = """
+                    {
+                      "message": "Large file uploaded successfully",
+                      "key": "uploads/large-video.mp4",
+                      "url": "https://your-bucket.s3.amazonaws.com/uploads/large-video.mp4"
+                    }"""))),
+        @ApiResponse(responseCode = "500", description = "Upload failed or aborted", content = @Content)
+    })
+    @PostMapping(value = "/upload/large", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> largeUpload(
+            @Parameter(description = "Large file to upload", required = true)
             @RequestParam("file") MultipartFile file,
+            @Parameter(description = "Destination S3 key. Defaults to uploads/<filename>")
             @RequestParam(value = "key", required = false) String key) throws IOException {
 
         String s3Key = resolveKey(key, file.getOriginalFilename());
@@ -97,19 +101,29 @@ public class S3Controller {
         ));
     }
 
-    // ── 3. Client-Driven Multipart: Step 1 — Initiate ────────────────────────
+    // ── 3. Initiate Multipart ─────────────────────────────────────────────────
 
-    /**
-     * POST /api/s3/multipart/initiate?key=uploads/file.zip
-     *
-     * Starts a multipart upload session.
-     * Returns an uploadId that must be passed to every subsequent call.
-     *
-     * Example:
-     *   curl -X POST "http://localhost:8080/api/s3/multipart/initiate?key=uploads/file.zip"
-     */
+    @Operation(
+        summary = "Initiate multipart upload — Step 1",
+        description = """
+            Starts a client-driven multipart upload session.
+            Returns an `uploadId` that **must** be passed to every subsequent upload-part and complete call.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Multipart upload initiated",
+            content = @Content(mediaType = "application/json",
+                examples = @ExampleObject(value = """
+                    {
+                      "uploadId": "VXBsb2FkIElEIGZvciA2aWWpbmcncyBteS1tb3ZpZS5t",
+                      "key": "uploads/file.zip",
+                      "message": "Multipart upload initiated. Use uploadId to upload parts."
+                    }"""))),
+        @ApiResponse(responseCode = "500", description = "Failed to initiate", content = @Content)
+    })
     @PostMapping("/multipart/initiate")
     public ResponseEntity<Map<String, String>> initiateMultipartUpload(
+            @Parameter(description = "Destination S3 key (e.g. uploads/file.zip)", required = true)
             @RequestParam("key") String key) {
 
         String uploadId = s3Service.initiateMultipartUpload(key);
@@ -121,32 +135,36 @@ public class S3Controller {
         ));
     }
 
-    // ── 4. Client-Driven Multipart: Step 2 — Upload Part ─────────────────────
+    // ── 4. Upload Part ────────────────────────────────────────────────────────
 
-    /**
-     * POST /api/s3/multipart/upload-part?key=...&uploadId=...&partNumber=1
-     *
-     * Uploads a single part (chunk). Parts must be ≥ 5 MB except the last.
-     * Returns the ETag — save it, you need it to complete the upload.
-     *
-     * Form params:
-     *   file        — the binary chunk
-     *   key         — same S3 key used in initiate
-     *   uploadId    — from the initiate response
-     *   partNumber  — 1-based index (max 10000)
-     *
-     * Example:
-     *   curl -X POST "http://localhost:8080/api/s3/multipart/upload-part" \
-     *        -F "file=@chunk_001.bin" \
-     *        -F "key=uploads/file.zip" \
-     *        -F "uploadId=xxxx" \
-     *        -F "partNumber=1"
-     */
-    @PostMapping("/multipart/upload-part")
+    @Operation(
+        summary = "Upload a single part — Step 2",
+        description = """
+            Uploads one chunk of a multipart upload. Parts must be **≥ 5 MB** except the last part.
+            Save the returned `eTag` — it is required to complete the upload.
+            Maximum 10,000 parts per upload.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Part uploaded successfully",
+            content = @Content(mediaType = "application/json",
+                examples = @ExampleObject(value = """
+                    {
+                      "partNumber": "1",
+                      "eTag": "\\"d8e8fca2dc0f896fd7cb4cb0031ba249\\"",
+                      "message": "Part uploaded. Save the eTag for the complete call."
+                    }"""))),
+        @ApiResponse(responseCode = "500", description = "Part upload failed", content = @Content)
+    })
+    @PostMapping(value = "/multipart/upload-part", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> uploadPart(
+            @Parameter(description = "Binary chunk data (≥ 5 MB except last part)", required = true)
             @RequestParam("file") MultipartFile file,
+            @Parameter(description = "Same S3 key used in initiate", required = true)
             @RequestParam("key") String key,
+            @Parameter(description = "uploadId from the initiate response", required = true)
             @RequestParam("uploadId") String uploadId,
+            @Parameter(description = "1-based part number (max 10,000)", required = true, example = "1")
             @RequestParam("partNumber") int partNumber) throws IOException {
 
         String eTag = s3Service.uploadPart(uploadId, key, partNumber, file);
@@ -158,30 +176,41 @@ public class S3Controller {
         ));
     }
 
-    // ── 5. Client-Driven Multipart: Step 3 — Complete ────────────────────────
+    // ── 5. Complete Multipart ─────────────────────────────────────────────────
 
-    /**
-     * POST /api/s3/multipart/complete?key=uploads/file.zip
-     *
-     * Assembles all uploaded parts into the final S3 object.
-     *
-     * Request body (JSON):
-     * {
-     *   "uploadId": "xxxx",
-     *   "parts": [
-     *     { "partNumber": 1, "eTag": "\"abc123\"" },
-     *     { "partNumber": 2, "eTag": "\"def456\"" }
-     *   ]
-     * }
-     *
-     * Example:
-     *   curl -X POST "http://localhost:8080/api/s3/multipart/complete?key=uploads/file.zip" \
-     *        -H "Content-Type: application/json" \
-     *        -d '{"uploadId":"xxxx","parts":[{"partNumber":1,"eTag":"\"abc\""}]}'
-     */
+    @Operation(
+        summary = "Complete multipart upload — Step 3",
+        description = """
+            Finalizes the multipart upload by assembling all uploaded parts into a single S3 object.
+            Provide the `uploadId` and the list of all `{ partNumber, eTag }` pairs collected from Step 2.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Multipart upload completed",
+            content = @Content(mediaType = "application/json",
+                examples = @ExampleObject(value = """
+                    {
+                      "message": "Multipart upload completed successfully",
+                      "key": "uploads/file.zip",
+                      "url": "https://your-bucket.s3.amazonaws.com/uploads/file.zip"
+                    }"""))),
+        @ApiResponse(responseCode = "500", description = "Failed to complete", content = @Content)
+    })
     @PostMapping("/multipart/complete")
     public ResponseEntity<Map<String, String>> completeMultipartUpload(
+            @Parameter(description = "Destination S3 key", required = true)
             @RequestParam("key") String key,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "uploadId and list of { partNumber, eTag } from each uploaded part",
+                content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(value = """
+                        {
+                          "uploadId": "VXBsb2FkIElEIGZvciA2aWWpbmcncyBteS1tb3ZpZS5t",
+                          "parts": [
+                            { "partNumber": 1, "eTag": "\\"abc123\\"" },
+                            { "partNumber": 2, "eTag": "\\"def456\\"" }
+                          ]
+                        }""")))
             @RequestBody CompleteUploadRequest request) {
 
         String url = s3Service.completeMultipartUpload(key, request);
@@ -193,20 +222,31 @@ public class S3Controller {
         ));
     }
 
-    // ── 6. Abort Multipart Upload ─────────────────────────────────────────────
+    // ── 6. Abort Multipart ────────────────────────────────────────────────────
 
-    /**
-     * DELETE /api/s3/multipart/abort?key=uploads/file.zip&uploadId=xxxx
-     *
-     * Aborts an in-progress multipart upload and frees all stored parts.
-     * Always call this when an upload fails to avoid storage charges.
-     *
-     * Example:
-     *   curl -X DELETE "http://localhost:8080/api/s3/multipart/abort?key=uploads/file.zip&uploadId=xxxx"
-     */
+    @Operation(
+        summary = "Abort multipart upload",
+        description = """
+            Aborts an in-progress multipart upload and frees all stored parts.
+            **Always call this on failure** to avoid storage charges for incomplete uploads.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Upload aborted successfully",
+            content = @Content(mediaType = "application/json",
+                examples = @ExampleObject(value = """
+                    {
+                      "message": "Multipart upload aborted successfully",
+                      "uploadId": "VXBsb2FkIElEIGZvciA2aWWpbmcncyBteS1tb3ZpZS5t",
+                      "key": "uploads/file.zip"
+                    }"""))),
+        @ApiResponse(responseCode = "500", description = "Abort failed", content = @Content)
+    })
     @DeleteMapping("/multipart/abort")
     public ResponseEntity<Map<String, String>> abortMultipartUpload(
+            @Parameter(description = "uploadId to abort", required = true)
             @RequestParam("uploadId") String uploadId,
+            @Parameter(description = "S3 key of the upload to abort", required = true)
             @RequestParam("key") String key) {
 
         s3Service.abortMultipartUpload(uploadId, key);
