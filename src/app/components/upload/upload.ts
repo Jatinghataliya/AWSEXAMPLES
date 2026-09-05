@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FileValidatorService } from '../../services/file-validator';
 import { S3UploadService, UploadProgress } from '../../services/s3-upload';
@@ -27,6 +27,7 @@ export class UploadComponent {
   constructor(
     private validator: FileValidatorService,
     private uploadService: S3UploadService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   // ── Drag & Drop ─────────────────────────────────────────────────────────────
@@ -64,12 +65,14 @@ export class UploadComponent {
         s3Key: `uploads/${Date.now()}-${file.name}`,
       };
       this.uploads.unshift(item);
+      this.cdr.markForCheck();
 
       // Step 1: synchronous checks (extension, MIME, size, etc.)
       const syncResult = this.validator.validateSync(file);
       if (!syncResult.valid) {
         item.status = 'blocked';
         item.error = syncResult.error;
+        this.cdr.markForCheck();
         continue;
       }
 
@@ -78,11 +81,13 @@ export class UploadComponent {
       if (!magicResult.valid) {
         item.status = 'blocked';
         item.error = magicResult.error;
+        this.cdr.markForCheck();
         continue;
       }
 
       // Step 3: upload
       item.status = 'uploading';
+      this.cdr.markForCheck();
       this.uploadService.upload(file, item.s3Key).subscribe((progress: UploadProgress) => {
         item.progress = progress.percentage;
         item.status = progress.status === 'done' ? 'done'
@@ -90,6 +95,7 @@ export class UploadComponent {
                     : 'uploading';
         if (progress.url) item.url = progress.url;
         if (progress.error) item.error = progress.error;
+        this.cdr.markForCheck();
       });
     }
   }
@@ -106,10 +112,12 @@ export class UploadComponent {
 
   removeItem(index: number): void {
     this.uploads.splice(index, 1);
+    this.cdr.markForCheck();
   }
 
   clearAll(): void {
     this.uploads = [];
+    this.cdr.markForCheck();
   }
 
   get hasUploads(): boolean {
